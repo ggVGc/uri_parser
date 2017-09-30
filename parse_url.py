@@ -51,9 +51,13 @@ def extractUserInfo(authorityInfo):
 
 
 def extractHostAndPort(hostContent):
+  if hostContent == '':
+    return (NULL, NO_PORT)
+
   splitRes = hostContent.split(':', 1)
   if len(splitRes) > 1:
-    return splitRes
+    (host, port) = splitRes
+    return (host, port if port != '' else NO_PORT)
   else:
     return (hostContent, NO_PORT)
 
