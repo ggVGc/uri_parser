@@ -47,8 +47,7 @@ else
 [port] => \5\n\
 [user] => \2\n\
 [pass] => \3\
-  ;p" \
-  |  sanitizeOutput
+;p" | sanitizeOutput
 fi
 
 # Print out the rest
