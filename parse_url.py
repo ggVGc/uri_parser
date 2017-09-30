@@ -44,8 +44,8 @@ def extractPath(bodyContent):
 def extractUserInfo(authorityInfo):
   splitRes = authorityInfo.split('@')
   if len(splitRes) > 1:
-    userInfoSplit = splitRes[0].split(':')
-    return (userInfoSplit[0] or "", userInfoSplit[1] or NULL, splitRes[1])
+    (user, password) = splitRes[0].split(':')
+    return (user if len(user) > 1 else NULL, password or NULL, splitRes[1])
   else:
     return (NULL, NULL, authorityInfo)
 

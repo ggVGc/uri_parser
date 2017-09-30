@@ -23,7 +23,7 @@ public class ReferenceUrlParse{
     System.out.println("[scheme] => "+uri.getScheme());
     System.out.println("[host] => "+uri.getHost());
     System.out.println("[port] => "+uri.getPort());
-    System.out.println("[user] => "+userInfoSplit[0]);
+    System.out.println("[user] => "+(userInfoSplit[0].length() > 1 ? userInfoSplit[0] : "null"));
     System.out.println("[pass] => "+(userInfoSplit.length > 1 ? userInfoSplit[1] : "null"));
     System.out.println("[path] => "+uri.getRawPath());
     System.out.println("[query] => "+uri.getRawQuery());
