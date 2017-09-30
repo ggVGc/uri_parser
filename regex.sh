@@ -1,5 +1,6 @@
+#!/usr/bin/env bash
 
-read input
+read -r input
 
 formatString="\4\n\
 \2\n\
@@ -8,15 +9,15 @@ formatString="\4\n\
 [fragment] => \9"
 
 # Regex from reference implementation at: https://tools.ietf.org/html/rfc3986#page-50
-fullResult=$(printf "$input" | sed -rn "s;^(([^:/?#]+):)?(//([^/?#]*))?([^?#]*)(\?([^#]*))?(#(.*))?;$formatString;p")
+fullResult=$(printf "%s" "$input" | sed -rn "s;^(([^:/?#]+):)?(//([^/?#]*))?([^?#]*)(\?([^#]*))?(#(.*))?;$formatString;p")
 
-scheme=$(echo "$fullResult" | tail +2 | head -1)
-authority=$(printf "$fullResult" | head -1)
+scheme=$(echo "$fullResult" | sed -n '2{p;q;}') # pull 2nd line
+authority=$(printf "%s" "$fullResult" | head -1)
 
 # Translate empty port to '-1' and other empty fields to null
 function sanitizeOutput() {
-  while read entry; do
-    printf "$entry\n" \
+  while read -r entry; do
+    printf "%s\n" "$entry" \
       | sed 's/^\(\[port]\) =>[[:blank:]]*$/\1 => -1/' \
       | sed 's/^\(\[.*\]\) =>[[:blank:]]*$/\1 => null/'
   done
@@ -26,7 +27,7 @@ echo "Map("
 
 # Print scheme first
 if [[ "$scheme" != "" ]]; then
-  printf "[scheme] => $scheme\n"
+  printf "[scheme] => %s\n" "$scheme"
 else
   echo "[scheme] => null"
 fi
@@ -39,7 +40,7 @@ if [[ "$authority" == "" ]]; then
   echo "[pass] => null"
 else
   # Expand host, port and user info
-  printf "$authority\n" | sed -rn "s;^\
+  printf "%s\n" "$authority" | sed -rn "s;^\
 (([^:]*):([^:^@]*)@)?\
 ([^:]+)\
 :?([0-9]+)?.*;\
@@ -51,7 +52,7 @@ else
 fi
 
 # Print out the rest
-printf "$fullResult\n" | tail +3 | sanitizeOutput
+printf "%s\n" "$fullResult" | tail +3 | sanitizeOutput
 
 echo ")"
 
