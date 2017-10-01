@@ -9,51 +9,86 @@ local V = lpeg.V
 local Ct = lpeg.Ct
 local match = lpeg.match
 
-querySep = P'?'
-fragmentSep = P'#'
-anything = P(1)
+function emptyToNull(s)
+  s = s and s or "null"
+  if s == "" then
+    return "null"
+  else
+    return s
+  end
+end
 
-query = querySep^-1 * C((anything - fragmentSep)^0)
+local querySep = P'?'
+local fragmentSep = P'#'
+local anything = P(1)
 
-fragment = fragmentSep^-1 * C(anything^0)
+local query = querySep^-1 * C((anything - fragmentSep)^0)
 
-userOrPass = C((anything - (fragmentSep + querySep + S'@:/'))^0)
+local fragment = fragmentSep^-1 * C(anything^0)
 
-userInfo = ((userOrPass * P':' * userOrPass)^1 * #P'@')^0
+local userOrPass = C((anything - (fragmentSep + querySep + S'@:/'))^0)
 
-authority = 
-  Ct(userInfo)
+local userInfo = ((userOrPass * P':' * userOrPass)^1 * #P'@')^0
+
+local scheme = C((anything - S':/')^0) * P'://' 
+
+local host = C((anything - (querySep + fragmentSep + S'/:'))^1)
+
+local port = (P':' * C(R'09'^1))^0
+
+local path = C((anything - (querySep + fragmentSep))^0)
+
+local authority = 
+  scheme 
+  * Ct(userInfo)
   * P'@'^-1
-  * C((anything - (querySep + fragmentSep))^1)
+  * host
+  * port
 
-scheme = Ct((C((anything - S':/')^1) * C(P':'^1) * C(P'/'^1))^0)
+local patt = Ct(
+  Ct(
+    authority^1
+    + (C((anything - S':/')^1) * P':')^-1
+  )
+  * path
+  * query
+  * fragment
+)
 
-patt = Ct(scheme * authority * query * fragment)
+local input = io.read()
+local res = match(patt, input)
 
-res = match(patt, "ha:://user:pass123@www.google.com/some/path///?key=val#fragment")
+local userInfoRes = res[2]
 
-schemeRes = res[1]
-userInfoRes = res[2]
 
-if #schemeRes then
-  print('scheme => '..schemeRes[1])
-  --[[
-  print('colons => '..schemeRes[2])
-  print('slashes => '..schemeRes[3])
-  --]]
+print 'Map('
+
+if #res[1] > 0 then
+  print("[scheme] => "..emptyToNull(res[1][1]))
+  print("[host] => "..emptyToNull(res[1][3]))
+  local portRes = res[1][4]
+  if not portRes or portRes == '' then
+    portRes = '-1'
+  end
+  print("[port] => "..emptyToNull(portRes))
+  local userInfoRes =  res[1][2]
+  if userInfoRes then
+    print("[user] => "..emptyToNull(userInfoRes[1]))
+    print("[pass] => "..emptyToNull(userInfoRes[2]))
+  else
+    print("[user] => null")
+    print("[pass] => null")
+  end
 else
-  print('scheme => null')
+  print("[scheme] => null")
+  print("[host] => null")
+  print("[port] => -1")
+  print("[user] => null")
+  print("[pass] => null")
 end
 
-if #userInfoRes > 0 then
-  print('name => '..userInfoRes[1])
-  print('pass => '..userInfoRes[2])
-else
-  print('name => null')
-  print('pass => null')
-end
+print("[path] => "..emptyToNull(res[2]))
+print("[query] => "..emptyToNull(res[3]))
+print("[fragment] => "..emptyToNull(res[4]))
 
-print('host => '..res[3])
-print('query => '..res[4])
-print('fragment => '..res[5])
-
+print ')'
