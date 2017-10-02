@@ -51,7 +51,7 @@ local port =
   * Cg(digit^1, 'port')
 
 local authority = 
-  (userInfo + P'@')^0 -- optional
+  (userInfo + P'@')^0 -- optional user info. Lone @ is ignored
   * host -- might be empty
   * port^0 -- optional
 
