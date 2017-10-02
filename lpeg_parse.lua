@@ -26,12 +26,6 @@ function splitFirst(s, match)
   else
     return s, ''
   end
-
-  local ret = {}
-  for x in string.gmatch(s, '[^'..chars..']+') do
-    table.insert(ret, x)
-  end
-  return ret
 end
 
 local any = P(1)
