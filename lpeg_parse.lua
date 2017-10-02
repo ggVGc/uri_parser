@@ -47,13 +47,13 @@ local scheme = Cg((any - separators)^1, 'scheme')
 local host = Cg((any - separators)^1, 'host')
 
 local port =
-  P':'
-  * Cg(digit^1, 'port')
+  P':'^-1
+  * Cg(digit^1, 'port')^0
 
 local authority = 
   (userInfo + P'@')^0 -- optional user info. Lone @ is ignored
   * host -- might be empty
-  * port^0 -- optional
+  * port -- optional
 
 
 local input = io.read()
