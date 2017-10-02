@@ -17,7 +17,8 @@ struct URIInfo{
 };
 
 
-typedef string::const_iterator (*ParseFun)(const string::const_iterator startIter, const string::const_iterator &endIter, URIInfo &outInfo);
+typedef string::const_iterator (*ParseFun)
+  (const string::const_iterator startIter, const string::const_iterator &endIter, URIInfo &outInfo);
 
 
 enum class ParseStageID{
