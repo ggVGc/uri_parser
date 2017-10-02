@@ -42,6 +42,7 @@ else
   # Expand host, port and user info
   printf "%s\n" "$authority" | sed -rn "s;^\
 (([^:]*):([^:^@]*)@)?\
+@?\
 ([^:]+)\
 :?([0-9]+)?.*;\
 [host] => \4\n\
