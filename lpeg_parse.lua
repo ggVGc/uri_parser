@@ -24,7 +24,7 @@ function split(s, chars)
   for x in string.gmatch(s, '[^'..chars..']+') do
     table.insert(ret, x)
   end
-  return unpack(ret)
+  return ret
 end
 
 local any = P(1)
@@ -57,7 +57,7 @@ local authority =
 
 
 local input = io.read()
-local body, query, fragment = split(input, '?#')
+local body, query, fragment = unpack(split(input, '?#'))
 
 local patt = Ct(
   (
