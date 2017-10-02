@@ -29,9 +29,12 @@ end
 
 local any = P(1)
 local digit = R'09'
+local separators = S':/' -- URI separators are colon and slash
+local userInfoSeparators = separators + P'@' -- Except for userInfo.. where @ is the delimiter
 
-local userPassContent = (any - S'@:/')^0
+local userPassContent = (any - userInfoSeparators)^0
 
+-- user:password followed by @-sign. Either part can be empty, but ':' is mandatory
 local userInfo =
   (
     Cg(userPassContent, 'user')
@@ -40,20 +43,17 @@ local userInfo =
   )^1
   * P'@'
 
-local scheme = Cg((any - S':/')^1, 'scheme')
-
-local host = Cg((any - S':/')^1, 'host')
+local scheme = Cg((any - separators)^1, 'scheme')
+local host = Cg((any - separators)^1, 'host')
 
 local port =
   P':'
   * Cg(digit^1, 'port')
 
-local path = Cg(any^0, 'path')
-
 local authority = 
-  userInfo^0
-  * host
-  * port^0
+  (userInfo + P'@')^0 -- optional
+  * host -- might be empty
+  * port^0 -- optional
 
 
 local input = io.read()
@@ -61,29 +61,28 @@ local body, query, fragment = split(input, '?#')
 
 local patt = Ct(
   (
-    (scheme * P'://' * authority)^1
-    + (P'//' * userInfo * P'@'^-1 * host * port)
-    + (P'//' * #P'/')
-    + (scheme * P':')^-1
+    ((scheme * P':')^-1 * P'//' * authority)^1
+    + (scheme * P':')^-1 -- non-URL. Everything after scheme is path
   )
-  * path
+  * (
+    (P'//' * Cg(P'/' * any^0, 'path'))
+    + Cg(any^0, 'path')
+  )
 )
 
 local res = match(patt, body)
 
-print 'Map('
-
-print("[scheme] => "..emptyToNull(res.scheme))
-print("[host] => "..emptyToNull(res.host))
 if not res.port or res.port == '' then
   res.port = '-1'
 end
-print("[port] => "..emptyToNull(res.port))
+
+print 'Map('
+print("[scheme] => "..emptyToNull(res.scheme))
+print("[host] => "..emptyToNull(res.host))
+print("[port] => "..res.port)
 print("[user] => "..emptyToNull(res.user))
 print("[pass] => "..emptyToNull(res.pass))
-
 print("[path] => "..emptyToNull(res.path))
 print("[query] => "..emptyToNull(query))
 print("[fragment] => "..emptyToNull(fragment))
-
 print ')'
