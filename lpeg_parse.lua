@@ -65,7 +65,7 @@ local patt = Ct(
     + (scheme * P':')^-1 -- non-URL. Everything after scheme is path
   )
   * (
-    (P'//' * Cg(P'/' * any^0, 'path'))
+    (P'//' * Cg(P'/' * any^0, 'path')) -- Relative. Ignore first two slashes
     + Cg(any^0, 'path')
   )
 )
