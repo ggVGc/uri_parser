@@ -38,9 +38,12 @@ testStrings="\
   http:////asd:11@path?arg=value
   http://user:12@hostname.com/path?arg=value
   /hostname.com:/path?arg=value#fragment
+  //hostname.com:/path?arg=value#fragment
+  ///hostname.com:/path?arg=value#fragment
   http:/hostname.com/path?arg=value#fragment
   hostname.com/path?arg=value#fragment
   http://:12@hostname/path?arg=value
+  http://123user:@hostname/path?arg=value
   http://hostname/path
   http://name:pass@hostname.com:124/path?arg=value#fragment
   http://name:@hostname.com/path?arg=value#fragment
@@ -48,11 +51,11 @@ testStrings="\
   http://hostname.com/pat:/h?arg=va:lue#fragment
   /hostname.com/path?arg=value#fragment
   /hostname.com:12/path?arg=value#fragment
-  //asd:22@hostname.com:12/path?arg=value#fragment
-  ///asda:3333@hostname.com:12/path?arg=value#fragment
+  //user:22@hostname.com:12/path?arg=value#fragment
+  ///user:3333@hostname.com:12/path?arg=value#fragment
   ///hostname.com:12/path?arg=value#fragment
   ////hostname.com:12/path?arg=value#fragment
-  hostname.com/pa:th?arg=value#fragment
+  hostname.com/pa:th?arg=va__lue#fr??23agment
 
 "
   # /name:pass@hostname.com:123/path?arg=value#fragment
