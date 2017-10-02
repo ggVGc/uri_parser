@@ -4,7 +4,7 @@
 
 using std::string;
 
-struct Output{
+struct URIInfo{
   string scheme;
   string host;
   string port;
@@ -16,13 +16,9 @@ struct Output{
 };
 
 
-struct ParseResult{
-  string::const_iterator iter;
-  string str;
-};
+typedef string::const_iterator (*ParseFun)(const string::const_iterator startIter, const string::const_iterator &endIter, URIInfo &outInfo);
 
-
-enum class Part{
+enum class ParseStageID{
   Scheme
   ,UserInfo
   ,Host
@@ -32,30 +28,35 @@ enum class Part{
 };
 
 
-struct ParseState{
-  Part curPart = Part::Scheme;
-  string accum;
-};
+ParseStageID nextStageID(const ParseStageID &stageID){
+  switch (stageID) {
+    case ParseStageID::Scheme: return ParseStageID::UserInfo;
+    case ParseStageID::UserInfo: return ParseStageID::Host;
+    case ParseStageID::Host: return ParseStageID::Port;
+    case ParseStageID::Port: return ParseStageID::Path;
+    case ParseStageID::Path: return ParseStageID::Done;
+    default: return ParseStageID::Done;
+  }
+}
 
 
-Part parseScheme(const string::const_iterator startIter, const string::const_iterator &endIter, ParseResult &ret){
+string::const_iterator parseScheme(const string::const_iterator startIter, const string::const_iterator &endIter, URIInfo &outInfo){
   string::const_iterator curIter = startIter;
   while(curIter != endIter){
     auto c = *(curIter++);
     if(c == '/'){
       break;
     }else if(c == ':'){
-      ret.str = string(startIter, curIter-1);
-      ret.iter = curIter;
-      break;
+      outInfo.scheme = string(startIter, curIter-1);
+      return curIter;
     }
   }
 
-  return Part::UserInfo;
+  return startIter;
 }
 
 
-Part parseHost(const string::const_iterator startIter, const string::const_iterator &endIter, ParseResult &ret){
+string::const_iterator parseHost(const string::const_iterator startIter, const string::const_iterator &endIter, URIInfo &info){
   string::const_iterator curIter = startIter;
   const char first = startIter != endIter ? (*startIter) : ' ';
   const char second = startIter+1 != endIter ? *(startIter+1) : ' ';
@@ -75,16 +76,16 @@ Part parseHost(const string::const_iterator startIter, const string::const_itera
         if(c == '/'){
           curIter--;
         }
-        ret.iter = curIter;
+        auto retIter = curIter;
         if(c == ':'){
           curIter--;
         }
-        ret.str = string(startIter+offset, curIter);
-        break;
+        info.host = string(startIter+offset, curIter);
+        return retIter;
       }
     }
   }
-  return Part::Port;
+  return startIter;
 }
 
 
@@ -93,7 +94,7 @@ bool isDigit(const char &c){
 }
 
 
-Part parsePort(const string::const_iterator startIter, const string::const_iterator &endIter, ParseResult &ret){
+string::const_iterator parsePort(const string::const_iterator startIter, const string::const_iterator &endIter, URIInfo &info){
   string::const_iterator curIter = startIter;
   while(curIter != endIter){
     auto c = *(curIter++);
@@ -101,16 +102,15 @@ Part parsePort(const string::const_iterator startIter, const string::const_itera
       if(curIter != endIter){
         curIter--;
       }
-      ret.iter = curIter;
-      ret.str = string(startIter, curIter);
-      break;
+      info.port = string(startIter, curIter);
+      return curIter;
     }
   }
-  return Part::Path;
+  return startIter;
 }
 
 
-Part parsePath(const string::const_iterator startIter, const string::const_iterator &endIter, ParseResult &ret){
+string::const_iterator parsePath(const string::const_iterator startIter, const string::const_iterator &endIter, URIInfo &info){
   string::const_iterator curIter = startIter;
   while(curIter != endIter){
     auto c = *(curIter++);
@@ -118,21 +118,19 @@ Part parsePath(const string::const_iterator startIter, const string::const_itera
       if (curIter != endIter) {
         curIter--;
       }
-      ret.iter = curIter;
-      ret.str = string(startIter, curIter);
-      break;
+      info.path = string(startIter, curIter);
+      return curIter;
     }
   }
-  return Part::Done;
+
+  return startIter;
 }
 
 
 
-void parseUserInfo(const string::const_iterator startIter, const string::const_iterator &endIter, string::const_iterator &outIter, string &outUser, string &outPass){
+string::const_iterator parseUserInfo(const string::const_iterator startIter, const string::const_iterator &endIter, URIInfo &outInfo){
   string::const_iterator curIter = startIter;
-  string::const_iterator colonPos = startIter;
-  bool foundColon = false;
-
+  string::const_iterator colonPos = endIter;
    int slashes = 0;
    while(curIter != endIter && *curIter == '/'){
     slashes++;
@@ -143,51 +141,38 @@ void parseUserInfo(const string::const_iterator startIter, const string::const_i
     auto c = *(curIter++);
     if(c==':'){
       colonPos = curIter;
-      foundColon = true;
-    }else if(c=='@' && foundColon){
-      outIter = curIter-1;
-      outUser = string(startIter+slashes, colonPos-1);
-      outPass = string(colonPos, curIter-1);
-      break;
+    }else if(c=='@' && colonPos != endIter){
+      outInfo.user = string(startIter+slashes, colonPos-1);
+      outInfo.pass = string(colonPos, curIter-1);
+      return curIter-1;
     }
+  }
+  return startIter;
+}
+
+
+ParseFun getParseFun(const ParseStageID &stageID){
+  switch (stageID) {
+    case ParseStageID::Scheme: return parseScheme;
+    case ParseStageID::UserInfo: return parseUserInfo;
+    case ParseStageID::Host: return parseHost;
+    case ParseStageID::Port: return parsePort;
+    case ParseStageID::Path: return parsePath;
+    default: return nullptr;
   }
 }
 
 
-Output parseURI(const string &input){
-  Output out;
-  ParseState parseState;
+URIInfo parseURI(const string &input){
+  URIInfo info;
+  ParseStageID stage = ParseStageID::Scheme;
 
-  ParseResult parseRes;
-  parseRes.iter = input.begin();
-  while(parseRes.iter != input.end()){
-    parseRes.str = "";
-    switch (parseState.curPart) {
-      case Part::Scheme:
-          parseState.curPart = parseScheme(parseRes.iter, input.end(), parseRes);
-          out.scheme = parseRes.str;
-        break;
-      case Part::UserInfo:
-          parseUserInfo(parseRes.iter, input.end(), parseRes.iter, out.user, out.pass);
-          parseState.curPart = Part::Host;
-        break;
-      case Part::Host:
-          parseState.curPart = parseHost(parseRes.iter, input.end(), parseRes);
-          out.host = parseRes.str;
-        break;
-      case Part::Port:
-          parseState.curPart = parsePort(parseRes.iter, input.end(), parseRes);
-          out.port = parseRes.str;
-        break;
-      case Part::Path:
-          parseState.curPart = parsePath(parseRes.iter, input.end(), parseRes);
-          out.path = parseRes.str;
-        break;
-      default:
-        parseRes.iter++;
-    }
+  auto iter = input.begin();
+  while(iter != input.end()){
+    iter = getParseFun(stage)(iter, input.end(), info);
+    stage = nextStageID(stage);
   }
-  return out;
+  return info;
 }
 
 
@@ -205,16 +190,16 @@ void printResultEntry(const string &key, const string &value){
 }
 
 
-void printResult(const Output &out){
+void printResult(const URIInfo &info){
   std::cout << "Map(" << std::endl;
-  printResultEntry("scheme", emptyToNull(out.scheme));
-  printResultEntry("host", emptyToNull(out.host));
-  printResultEntry("port", out.port.empty()?"-1":out.port);
-  printResultEntry("user", emptyToNull(out.user));
-  printResultEntry("pass", emptyToNull(out.pass));
-  printResultEntry("path", emptyToNull(out.path));
-  printResultEntry("query", emptyToNull(out.query));
-  printResultEntry("fragment", emptyToNull(out.fragment));
+  printResultEntry("scheme", emptyToNull(info.scheme));
+  printResultEntry("host", emptyToNull(info.host));
+  printResultEntry("port", info.port.empty()?"-1":info.port);
+  printResultEntry("user", emptyToNull(info.user));
+  printResultEntry("pass", emptyToNull(info.pass));
+  printResultEntry("path", emptyToNull(info.path));
+  printResultEntry("query", emptyToNull(info.query));
+  printResultEntry("fragment", emptyToNull(info.fragment));
   std::cout << ")" << std::endl;
 }
 
@@ -222,26 +207,29 @@ void printResult(const Output &out){
 int main(int argc, char *argv[]){
   string input;
   getline(std::cin, input);
+
+  // Split off query and fragment first
   string body = input;
   string query = "";
   string fragment = "";
-  auto fragmentSepInd = input.find("#");
+
+  const auto fragmentSepInd = input.find("#");
   if (fragmentSepInd != string::npos) {
     fragment = input.substr(fragmentSepInd+1);
     body = input.substr(0,fragmentSepInd);
   }
 
-  auto querySepInd = body.find("?");
+  const auto querySepInd = body.find("?");
   if (querySepInd != string::npos) {
     query = body.substr(querySepInd+1);
     body = body.substr(0,querySepInd);
   }
     
-  Output out = parseURI(body);
-  out.query = query;
-  out.fragment = fragment;
+  URIInfo info = parseURI(body);
+  info.query = query;
+  info.fragment = fragment;
 
-  printResult(out);
+  printResult(info);
   return 0;
 }
 
