@@ -28,24 +28,32 @@ function split(s, chars)
 end
 
 local any = P(1)
+local digit = R'09'
 
-local userOrPass = (any - S'@:/')^0
+local userPassContent = (any - S'@:/')^0
 
-local userInfo = ((Cg(userOrPass, 'user') * P':' * Cg(userOrPass, 'pass'))^1 * #P'@')^0
+local userInfo =
+  (
+    Cg(userPassContent, 'user')
+    * P':'
+    * Cg(userPassContent, 'pass')
+  )^1
+  * P'@'
 
 local scheme = Cg((any - S':/')^1, 'scheme')
 
-local host = Cg((any - S'/:')^1, 'host')
+local host = Cg((any - S':/')^1, 'host')
 
-local port = (P':' * Cg(R'09'^1, 'port'))^0
+local port =
+  P':'
+  * Cg(digit^1, 'port')
 
 local path = Cg(any^0, 'path')
 
 local authority = 
-  userInfo
-  * P'@'^-1
+  userInfo^0
   * host
-  * port
+  * port^0
 
 
 local input = io.read()
