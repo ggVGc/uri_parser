@@ -1,5 +1,6 @@
 
 set -e
+fastTest=true
 
 function doTest() {
   executable=$1
@@ -19,7 +20,49 @@ function doTest() {
 
 }
 
-testStrings="$(./gen_tests.py)"
+
+if  $fastTest ; then
+testStrings="\
+  http://hostname
+  hostname.com/path?arg=value#fragment
+  http://hostname.com
+  http://hostname.com:123
+  http://user:pass@hostname.com
+  http://user:@hostname.com:123
+  http://user:@hostname.com
+  http://:pass@hostname.com:123
+  http://:pass@hostname.com
+  http://:@ho123stname.com:123
+  http:////asd:11@path?arg=value
+  http://@path?arg=value
+  111@hostname.com/path?arg=value
+  http://user:12@hostname.com/path?arg=value
+  /hostname.com:/path?arg=value#fragment
+  http:/hostname.com/path?arg=value#fragment
+  http://hostname.com/path?arg=value#fragment
+  http://:12@hostname/path?arg=value
+  http://hostname/path
+  /name:pass@hostname.com:123/path?arg=value#fragment
+  http://name:pass@hostname.com:124/path?arg=value#fragment
+  http://name:@hostname.com/path?arg=value#fragment
+  http://hostname.com/pat:/h?arg=value#fragment
+  http://hostname.com/pat:/h?arg=va:lue#fragment
+  /hostname.com/path?arg=value#fragment
+  /hostname.com:12/path?arg=value#fragment
+  //asd:22@hostname.com:12/path?arg=value#fragment
+  ///asda:3333@hostname.com:12/path?arg=value#fragment
+  ///hostname.com:12/path?arg=value#fragment
+  ////hostname.com:12/path?arg=value#fragment
+  hostname.com/pa:th?arg=value#fragment
+"
+  # Not passing. Malformed?
+
+  # doTest 17 "$1" "http:://hostname.com:12/path?arg=value#fragment"               
+  # doTest 2 "$1" "http://@@path?arg=value"               
+else
+  testStrings="$(./gen_tests.py)"
+fi
+
 
 
 function runTestsFor() {
@@ -30,13 +73,6 @@ function runTestsFor() {
     doTest "$1" "$test"
     echo "Pass!"
   done
-
-
-
-  # Not passing. Malformed?
-
-  # doTest 17 "$1" "http:://hostname.com:12/path?arg=value#fragment"               
-  # doTest 2 "$1" "http://@@path?arg=value"               
 
   echo "$1 Passed!"
   echo ""
