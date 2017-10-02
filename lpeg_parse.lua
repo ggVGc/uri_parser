@@ -19,7 +19,14 @@ function emptyToNull(s)
   end
 end
 
-function split(s, chars)
+function splitFirst(s, match)
+  local startPos, endPos = string.find(s, match)
+  if startPos then
+    return s:sub(0,startPos-1), s:sub(endPos+1)
+  else
+    return s, ''
+  end
+
   local ret = {}
   for x in string.gmatch(s, '[^'..chars..']+') do
     table.insert(ret, x)
@@ -57,7 +64,9 @@ local authority =
 
 
 local input = io.read()
-local body, query, fragment = unpack(split(input, '?#'))
+local body, fragment = splitFirst(input, '#')
+local body, query = splitFirst(body, '?')
+
 
 local patt = Ct(
   (
