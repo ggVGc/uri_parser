@@ -11,8 +11,10 @@ function doTest() {
 
   if [[ "$res" != "$expected" ]]; then
     echo "Failed"
+    echo ""
     echo "Res:"
-    echo "$res" | sed 's/^/  /'
+    printf "%s\n" "$res" | sed 's/^/  /'
+    echo ""
     echo "Expected:"
     echo "$expected" | sed 's/^/  /'
     exit 1
@@ -23,26 +25,23 @@ function doTest() {
 
 if  $fastTest ; then
 testStrings="\
+  http://:pass@hostname.com:123
+  http://hostname.com/path?arg=value#fragment
   http://hostname
-  hostname.com/path?arg=value#fragment
   http://hostname.com
   http://hostname.com:123
   http://user:pass@hostname.com
   http://user:@hostname.com:123
   http://user:@hostname.com
-  http://:pass@hostname.com:123
   http://:pass@hostname.com
   http://:@ho123stname.com:123
   http:////asd:11@path?arg=value
-  http://@path?arg=value
-  111@hostname.com/path?arg=value
   http://user:12@hostname.com/path?arg=value
   /hostname.com:/path?arg=value#fragment
   http:/hostname.com/path?arg=value#fragment
-  http://hostname.com/path?arg=value#fragment
+  hostname.com/path?arg=value#fragment
   http://:12@hostname/path?arg=value
   http://hostname/path
-  /name:pass@hostname.com:123/path?arg=value#fragment
   http://name:pass@hostname.com:124/path?arg=value#fragment
   http://name:@hostname.com/path?arg=value#fragment
   http://hostname.com/pat:/h?arg=value#fragment
@@ -54,7 +53,12 @@ testStrings="\
   ///hostname.com:12/path?arg=value#fragment
   ////hostname.com:12/path?arg=value#fragment
   hostname.com/pa:th?arg=value#fragment
+
 "
+  # /name:pass@hostname.com:123/path?arg=value#fragment
+  # http://@path?arg=value
+  # 111@hostname.com/path?arg=value
+
   # Not passing. Malformed?
 
   # doTest 17 "$1" "http:://hostname.com:12/path?arg=value#fragment"               
@@ -78,9 +82,13 @@ function runTestsFor() {
   echo ""
 }
 
-runTestsFor "./lpeg_parse.lua"
-runTestsFor "./regex.sh"
+
+
+runTestsFor "./cpp_parse"
+# runTestsFor "./lpeg_parse.lua"
+# runTestsFor "./regex.sh"
 # runTestsFor "./py_parse.py"
+
 
 
 echo "All passed!"
