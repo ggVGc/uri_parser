@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <string>
 #include <iostream>
+#include <functional>
 
 using std::string;
 
@@ -43,7 +44,7 @@ ParseStageID nextStageID(const ParseStageID &stageID){
 string::const_iterator parseScheme(const string::const_iterator startIter, const string::const_iterator &endIter, URIInfo &outInfo){
   string::const_iterator curIter = startIter;
   while(curIter != endIter){
-    auto c = *(curIter++);
+    const auto c = *(curIter++);
     if(c == '/'){
       break;
     }else if(c == ':'){
@@ -56,11 +57,42 @@ string::const_iterator parseScheme(const string::const_iterator startIter, const
 }
 
 
+struct ParserRet{
+  ParserRet(string::const_iterator iter):finishedParse(true), iter(iter){}
+
+  static ParserRet Continue(){ return ParserRet();}
+
+  const bool finishedParse;
+  const string::const_iterator iter;
+
+  private:
+    ParserRet() : finishedParse(false){}
+};
+
+
+typedef std::function<ParserRet(const char c, string::const_iterator curIter, const bool isEnd)> ParserBody;
+
+// Convenience function for running parsing functions
+// Handles iteration and return/break conditions
+string::const_iterator runParser(const string::const_iterator startIter, const string::const_iterator &endIter, ParserBody parser){
+  string::const_iterator curIter = startIter;
+  while(curIter != endIter){
+    const auto c = *(curIter++);
+    const auto ret = parser(c, curIter, curIter == endIter);
+    if (ret.finishedParse) {
+      return ret.iter;
+    }
+  }
+  return startIter;
+}
+
+
 string::const_iterator parseHost(const string::const_iterator startIter, const string::const_iterator &endIter, URIInfo &info){
   string::const_iterator curIter = startIter;
   const char first = startIter != endIter ? (*startIter) : ' ';
   const char second = startIter+1 != endIter ? *(startIter+1) : ' ';
 
+  // host has to start with either // or @, and they should be ignored in output
   int offset = 0;
   if(first == '/' && second == '/'){
     offset = 2;
@@ -68,11 +100,14 @@ string::const_iterator parseHost(const string::const_iterator startIter, const s
     offset = 1;
   }
 
-  if(offset > 0){
-    curIter+=offset;
-    while(curIter != endIter){
-      auto c = *(curIter++);
-      if(c == '/' || c == ':' || curIter == endIter){
+  // Only run parser if host field starts with valid characters (e.g offset is non-zero)
+  if(offset == 0){
+    return startIter;
+  }
+
+  return runParser(startIter+offset, endIter,
+    [startIter, &info, offset] (const char c, string::const_iterator curIter, const bool isEnd){
+      if(c == '/' || c == ':' || isEnd){
         if(c == '/'){
           curIter--;
         }
@@ -81,11 +116,10 @@ string::const_iterator parseHost(const string::const_iterator startIter, const s
           curIter--;
         }
         info.host = string(startIter+offset, curIter);
-        return retIter;
+        return ParserRet(retIter);
       }
-    }
-  }
-  return startIter;
+      return ParserRet::Continue();
+  });
 }
 
 
@@ -95,59 +129,60 @@ bool isDigit(const char &c){
 
 
 string::const_iterator parsePort(const string::const_iterator startIter, const string::const_iterator &endIter, URIInfo &info){
-  string::const_iterator curIter = startIter;
-  while(curIter != endIter){
-    auto c = *(curIter++);
-    if(!isDigit(c) || curIter == endIter){
-      if(curIter != endIter){
-        curIter--;
+  return runParser(startIter, endIter,
+    [startIter, &info] (const char c, string::const_iterator curIter, const bool isEnd){
+      if(!isDigit(c) || isEnd){
+        if(!isEnd){
+          curIter--;
+        }
+        info.port = string(startIter, curIter);
+        return ParserRet(curIter);
       }
-      info.port = string(startIter, curIter);
-      return curIter;
-    }
-  }
-  return startIter;
+      return ParserRet::Continue();
+    });
 }
 
 
 string::const_iterator parsePath(const string::const_iterator startIter, const string::const_iterator &endIter, URIInfo &info){
-  string::const_iterator curIter = startIter;
-  while(curIter != endIter){
-    auto c = *(curIter++);
-    if(c=='?' || c=='#' || curIter == endIter){
-      if (curIter != endIter) {
-        curIter--;
+  return runParser(startIter, endIter,
+    [startIter, &info] (const char c, string::const_iterator curIter, const bool isEnd){
+      if(c=='?' || c=='#' || isEnd){
+        if (!isEnd) {
+          curIter--;
+        }
+        info.path = string(startIter, curIter);
+        return ParserRet(curIter);
       }
-      info.path = string(startIter, curIter);
-      return curIter;
-    }
-  }
-
-  return startIter;
+      return ParserRet::Continue();
+  });
 }
 
 
 
-string::const_iterator parseUserInfo(const string::const_iterator startIter, const string::const_iterator &endIter, URIInfo &outInfo){
+string::const_iterator parseUserInfo(const string::const_iterator startIter, const string::const_iterator &endIter, URIInfo &info){
   string::const_iterator curIter = startIter;
-  string::const_iterator colonPos = endIter;
-   int slashes = 0;
+   int slashCount = 0;
    while(curIter != endIter && *curIter == '/'){
-    slashes++;
+    slashCount++;
     curIter++;
    }
 
-  while(slashes <= 2 && curIter != endIter){
-    auto c = *(curIter++);
-    if(c==':'){
-      colonPos = curIter;
-    }else if(c=='@' && colonPos != endIter){
-      outInfo.user = string(startIter+slashes, colonPos-1);
-      outInfo.pass = string(colonPos, curIter-1);
-      return curIter-1;
-    }
+  if(slashCount > 2){
+    return startIter;
   }
-  return startIter;
+
+  string::const_iterator colonPos = endIter;
+  return runParser(startIter, endIter,
+    [startIter, &info, slashCount, &colonPos, endIter] (const char c, string::const_iterator curIter, const bool isEnd){
+      if(c==':'){
+        colonPos = curIter;
+      }else if(c=='@' && colonPos != endIter){
+        info.user = string(startIter+slashCount, colonPos-1);
+        info.pass = string(colonPos, curIter-1);
+        return ParserRet(curIter-1);
+      }
+      return ParserRet::Continue();
+  });
 }
 
 
