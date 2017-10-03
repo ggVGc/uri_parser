@@ -5,7 +5,7 @@
 
 using std::string;
 
-struct URIInfo{
+struct URLInfo{
   string scheme;
   string host;
   string port;
@@ -18,7 +18,7 @@ struct URIInfo{
 
 
 typedef string::const_iterator (*ParseFun)
-  (const string::const_iterator startIter, const string::const_iterator &endIter, URIInfo &outInfo);
+  (const string::const_iterator startIter, const string::const_iterator &endIter, URLInfo &outInfo);
 
 
 enum class ParseStageID{
@@ -73,7 +73,7 @@ string::const_iterator runParser(const string::const_iterator startIter, const s
 }
 
 
-string::const_iterator parseScheme(const string::const_iterator startIter, const string::const_iterator &endIter, URIInfo &outInfo){
+string::const_iterator parseScheme(const string::const_iterator startIter, const string::const_iterator &endIter, URLInfo &outInfo){
   return runParser(startIter, endIter,
     [startIter, &outInfo] (const char c, string::const_iterator curIter, const bool isEnd){
       if(c == '/'){
@@ -87,7 +87,7 @@ string::const_iterator parseScheme(const string::const_iterator startIter, const
 }
 
 
-string::const_iterator parseHost(const string::const_iterator startIter, const string::const_iterator &endIter, URIInfo &outInfo){
+string::const_iterator parseHost(const string::const_iterator startIter, const string::const_iterator &endIter, URLInfo &outInfo){
   string::const_iterator curIter = startIter;
   const char first = startIter != endIter ? (*startIter) : ' ';
   const char second = startIter+1 != endIter ? *(startIter+1) : ' ';
@@ -128,7 +128,7 @@ bool isDigit(const char &c){
 }
 
 
-string::const_iterator parsePort(const string::const_iterator startIter, const string::const_iterator &endIter, URIInfo &outInfo){
+string::const_iterator parsePort(const string::const_iterator startIter, const string::const_iterator &endIter, URLInfo &outInfo){
   return runParser(startIter, endIter,
     [startIter, &outInfo] (const char c, string::const_iterator curIter, const bool isEnd){
       if(!isDigit(c) || isEnd){
@@ -143,7 +143,7 @@ string::const_iterator parsePort(const string::const_iterator startIter, const s
 }
 
 
-string::const_iterator parsePath(const string::const_iterator startIter, const string::const_iterator &endIter, URIInfo &outInfo){
+string::const_iterator parsePath(const string::const_iterator startIter, const string::const_iterator &endIter, URLInfo &outInfo){
   return runParser(startIter, endIter,
     [startIter, &outInfo] (const char c, string::const_iterator curIter, const bool isEnd){
       if(c=='?' || c=='#' || isEnd){
@@ -159,7 +159,7 @@ string::const_iterator parsePath(const string::const_iterator startIter, const s
 
 
 
-string::const_iterator parseUserInfo(const string::const_iterator startIter, const string::const_iterator &endIter, URIInfo &outInfo){
+string::const_iterator parseUserInfo(const string::const_iterator startIter, const string::const_iterator &endIter, URLInfo &outInfo){
   string::const_iterator curIter = startIter;
    int slashCount = 0;
    while(curIter != endIter && *curIter == '/'){
@@ -198,8 +198,8 @@ ParseFun getParseFun(const ParseStageID &stageID){
 }
 
 
-URIInfo parseURI(const string &input){
-  URIInfo info;
+URLInfo parseURL(const string &input){
+  URLInfo info;
   ParseStageID stage = ParseStageID::Scheme;
 
   auto iter = input.begin();
@@ -225,7 +225,7 @@ void printResultEntry(const string &key, const string &value){
 }
 
 
-void printResult(const URIInfo &info){
+void printResult(const URLInfo &info){
   std::cout << "Map(" << std::endl;
   printResultEntry("scheme", emptyToNull(info.scheme));
   printResultEntry("host", emptyToNull(info.host));
@@ -260,7 +260,7 @@ int main(int argc, char *argv[]){
     body = body.substr(0,querySepInd);
   }
     
-  URIInfo info = parseURI(body);
+  URLInfo info = parseURL(body);
   info.query = query;
   info.fragment = fragment;
 

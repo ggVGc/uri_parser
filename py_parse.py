@@ -63,10 +63,10 @@ def extractHostAndPort(hostContent):
 
 
 
-def parseURI(content):
+def parseURL(content):
   result = {}
-  (uriHead, result['query'], result['fragment']) = extractQueryAndFragment(content)
-  (result['scheme'], body) = extractScheme(uriHead)
+  (urlHead, result['query'], result['fragment']) = extractQueryAndFragment(content)
+  (result['scheme'], body) = extractScheme(urlHead)
   (authority, result['path']) = extractPath(body)
   (result['user'], result['pass'], hostInfo) = extractUserInfo(authority)
   (result['host'], result['port']) = extractHostAndPort(hostInfo)
@@ -86,7 +86,7 @@ if __name__ == "__main__":
       ,'fragment'
   ]
 
-  parsed = parseURI(sys.stdin.read().replace("\n", ""))
+  parsed = parseURL(sys.stdin.read().replace("\n", ""))
 
   print("Map(")
   for key in keys:
