@@ -30,7 +30,7 @@ end
 
 local any = P(1)
 local digit = R'09'
-local separators = S':/' -- URI separators are colon and slash
+local separators = S':/' -- URL separators are colon and slash
 local userInfoSeparators = separators + P'@' -- Except for userInfo.. where @ is the delimiter
 
 local userPassContent = (any - userInfoSeparators)^0
