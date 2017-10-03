@@ -2,13 +2,12 @@
 set -e
 fastTest=true
 
-function doTest() {
+
+function expect() {
   executable=$1
   input="$2"
-  expected=$(printf "%s\n" "$input" | java ReferenceUrlParse)
-
+  expected="$3"
   res=$(echo "$input" | $executable)
-
   if [[ "$res" != "$expected" ]]; then
     echo "Failed"
     echo ""
@@ -19,12 +18,17 @@ function doTest() {
     echo "$expected" | sed 's/^/  /'
     exit 1
   fi
+}
 
+
+function doURLTest() {
+  expected=$(printf "%s\n" "$2" | java ReferenceUrlParse)
+  expect "$1" "$2" "$expected"
 }
 
 
 if  $fastTest ; then
-testStrings="\
+urlTestStrings="\
   http://:pass@hostname.com:123
   http://hostname.com/path?arg=value#fragment
   http://hostname
@@ -56,28 +60,19 @@ testStrings="\
   ///hostname.com:12/path?arg=value#fragment
   ////hostname.com:12/path?arg=value#fragment
   hostname.com/pa:th?arg=va__lue#fr??23agment
-
 "
-  # /name:pass@hostname.com:123/path?arg=value#fragment
-  # http://@path?arg=value
-  # 111@hostname.com/path?arg=value
-
-  # Not passing. Malformed?
-
-  # doTest 17 "$1" "http:://hostname.com:12/path?arg=value#fragment"               
-  # doTest 2 "$1" "http://@@path?arg=value"               
 else
-  testStrings="$(./gen_tests.py)"
+  urlTestStrings="$(./gen_tests.py)"
 fi
 
 
 
-function runTestsFor() {
+function testUrlParser() {
   echo "Testing: $1"
 
-  printf "$testStrings" | while read -r test; do
+  printf "$urlTestStrings" | while read -r test; do
     echo "$1: $test"
-    doTest "$1" "$test"
+      doURLTest "$1" "$test"
     echo "Pass!"
   done
 
@@ -85,14 +80,25 @@ function runTestsFor() {
   echo ""
 }
 
+function testQueryParser() {
+  echo "Testing: $1"
 
+  expect "$1" "foo=bar?foo2=bar2" "$(printf "Map(\n[foo] => bar\n[foo2] => bar2\n)")"
+  expect "$1" "foo=ba11=r" "$(printf "Map(\n[foo] => ba11=r\n)")"
+  expect "$1" "?foo=bar" "$(printf "Map(\n[foo] => bar\n)")"
+  expect "$1" "foo=bar?" "$(printf "Map(\n[foo] => bar\n)")"
+  expect "$1" "foo=bar?foo2=" "$(printf "Map(\n[foo] => bar\n[foo2] => \n)")"
 
-runTestsFor "./cpp_parse"
-# runTestsFor "./lpeg_parse.lua"
-# runTestsFor "./regex.sh"
-# runTestsFor "./py_parse.py"
+  echo "$1 Passed!"
+  echo ""
+}
 
+testUrlParser "./cpp_parse"
+testUrlParser "./lpeg_parse.lua"
+testUrlParser "./regex.sh"
+testUrlParser "./py_parse.py"
 
+testQueryParser "./query_parse.py"
 
 echo "All passed!"
 
