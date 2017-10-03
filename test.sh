@@ -93,10 +93,11 @@ function testQueryParser() {
   echo ""
 }
 
-testUrlParser "./cpp_parse"
+testUrlParser "./py_parse.py"
 testUrlParser "./lpeg_parse.lua"
 testUrlParser "./regex.sh"
-testUrlParser "./py_parse.py"
+g++ ./cpp_parse.cpp -o cpp_parse
+testUrlParser "./cpp_parse"
 
 testQueryParser "./query_parse.py"
 
